@@ -1,0 +1,2498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>St. Petersburg Traffic Accidents Map - Leaflet Implementation</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <!-- Leaflet MarkerCluster CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css" />
+    
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            height: 100vh;
+            overflow: hidden;
+            color: #18334a;
+        }
+        
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+        
+        /* Cluster Icon Styles - minimal styling, no borders or shadows */
+        .marker-cluster {
+            background: transparent;
+            border: none;
+        }
+        
+        .marker-cluster img {
+            display: block;
+        }
+        
+        /* Legacy classes kept for compatibility, but sizes are now set inline */
+        .cluster-small {
+            width: 40px;
+            height: 40px;
+            font-size: 12px;
+        }
+        
+        .cluster-medium {
+            width: 50px;
+            height: 50px;
+            font-size: 14px;
+        }
+        
+        .cluster-large {
+            width: 60px;
+            height: 60px;
+            font-size: 16px;
+        }
+        
+        /* Popup/Balloon Styles */
+        .balloon-content {
+            min-width: 250px;
+            max-width: 350px;
+        }
+        
+        .balloon-content .subtitle1 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #18334a;
+        }
+        
+        .balloon-content .body3 {
+            font-size: 14px;
+            color: #666;
+            margin: 4px 0;
+        }
+        
+        .balloon-content .subtitle3 {
+            font-size: 14px;
+            font-weight: 500;
+            margin: 4px 0;
+        }
+        
+        .balloon-time {
+            font-size: 14px;
+            color: #666;
+            margin: 4px 0;
+        }
+        
+        .balloon-address {
+            font-size: 14px;
+            color: #666;
+            margin: 4px 0;
+        }
+        
+        .balloon-injured {
+            margin: 8px 0;
+        }
+        
+        .balloon-footer {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid #eee;
+        }
+        
+        .btn-light {
+            display: inline-block;
+            padding: 8px 16px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            text-decoration: none;
+            color: #18334a;
+            font-size: 14px;
+        }
+        
+        .btn-light:hover {
+            background: #e0e0e0;
+        }
+        
+        .cluster-popup {
+            min-width: 200px;
+        }
+        
+        .cluster-popup h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #18334a;
+        }
+        
+        .cluster-popup p {
+            font-size: 14px;
+            color: #666;
+            margin: 4px 0;
+        }
+        
+        .cluster-popup ul {
+            list-style: none;
+            padding: 0;
+            margin: 8px 0;
+        }
+        
+        .cluster-popup li {
+            font-size: 14px;
+            color: #666;
+            margin: 2px 0;
+        }
+        
+        .dates-list {
+            max-height: 400px;
+            overflow-y: auto;
+            margin-top: 10px;
+        }
+        
+        .date-group {
+            border-bottom: 1px solid #e0e0e0;
+            margin-bottom: 8px;
+        }
+        
+        .date-header {
+            cursor: pointer;
+            padding: 8px 12px;
+            background: #f5f5f5;
+            border-radius: 4px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: background 0.2s;
+        }
+        
+        .date-header:hover {
+            background: #e8e8e8;
+        }
+        
+        .date-text {
+            font-weight: 600;
+            color: #18334a;
+            font-size: 14px;
+        }
+        
+        .date-count {
+            color: #666;
+            font-size: 13px;
+            margin-left: 8px;
+        }
+        
+        .date-arrow {
+            color: #666;
+            font-size: 10px;
+            margin-left: auto;
+        }
+        
+        .date-details {
+            padding: 8px 12px;
+            background: white;
+        }
+        
+        .accident-item {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .accident-item:last-child {
+            border-bottom: none;
+        }
+        
+        .accident-time {
+            font-weight: 600;
+            color: #18334a;
+            font-size: 13px;
+            margin-bottom: 4px;
+        }
+        
+        .accident-info {
+            margin-left: 0;
+        }
+        
+        .accident-category {
+            font-weight: 500;
+            color: #333;
+            font-size: 13px;
+            margin-bottom: 2px;
+        }
+        
+        .accident-address {
+            color: #666;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+        
+        .accident-severity {
+            display: inline-block;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 11px;
+            font-weight: 500;
+            margin-right: 4px;
+        }
+        
+        .severity-easy {
+            background: #FFB81F;
+            color: white;
+        }
+        
+        .severity-heavy {
+            background: #FF7F24;
+            color: white;
+        }
+        
+        .severity-with-the-dead {
+            background: #FF001A;
+            color: white;
+        }
+        
+        .accident-injured {
+            display: inline-block;
+            color: #FFB81F;
+            font-size: 11px;
+            margin-right: 8px;
+        }
+        
+        .accident-dead {
+            display: inline-block;
+            color: #FF001A;
+            font-size: 11px;
+        }
+        
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            background: white;
+            padding: 30px 50px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 2000;
+            text-align: center;
+            min-width: 300px;
+        }
+        
+        .loading-spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #18334a;
+            border-radius: 50%;
+            width: 40px;
+            height: 40px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 10px;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .loading.hidden {
+            display: none;
+        }
+        
+        /* Hotspot Styles */
+        .hotspot-popup {
+            min-width: 200px;
+        }
+        
+        .hotspot-popup h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #FF001A;
+        }
+        
+        .hotspot-popup p {
+            font-size: 14px;
+            color: #666;
+            margin: 4px 0;
+        }
+        
+        .hotspot-accidents-list {
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        
+        .hotspot-accidents-list h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 10px;
+            color: #18334a;
+        }
+        
+        .hotspot-accidents-list ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .hotspot-accidents-list li {
+            padding: 6px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .hotspot-accidents-list li:last-child {
+            border-bottom: none;
+        }
+        
+        /* Filter Panel Styles */
+        .filter-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 400px;
+            max-width: calc(100% - 40px);
+            background: white;
+            box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            z-index: 1000;
+            pointer-events: all;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .filter-panel-content {
+            padding: 20px;
+            overflow-y: auto;
+            flex: 1;
+        }
+        
+        .filter-panel.hidden {
+            width: 300px;
+        }
+        
+        .filter-panel.hidden .filter-panel-content {
+            display: none;
+        }
+        
+        .filter-item {
+            margin-bottom: 20px;
+        }
+        
+        .filter-item:last-child {
+            margin-bottom: 0;
+        }
+        
+        .subtitle2 {
+            font-size: 14px;
+            font-weight: 500;
+            color: #18334a;
+            margin-bottom: 12px;
+            line-height: 20px;
+        }
+        
+        /* Date Filter Styles */
+        .date-filter-container {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+            position: relative;
+        }
+        
+        .date-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #d4dadd;
+            border-radius: 4px;
+            font-size: 14px;
+            color: #18334a;
+            background: white;
+            cursor: pointer;
+        }
+        
+        .date-input:focus {
+            outline: none;
+            border-color: #18334a;
+        }
+        
+        .date-dropdown-btn {
+            padding: 8px 12px;
+            border: 1px solid #d4dadd;
+            border-radius: 4px;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .date-dropdown-btn:hover {
+            background: #f5f5f5;
+        }
+        
+        .date-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 1px solid #d4dadd;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+            margin-top: 4px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1001;
+        }
+        
+        .date-value {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #18334a;
+            border-bottom: 1px solid #f0f0f0;
+        }
+        
+        .date-value:last-child {
+            border-bottom: none;
+        }
+        
+        .date-value:hover {
+            background: #f5f5f5;
+        }
+        
+        .date-error {
+            margin-top: 8px;
+            color: #FF001A;
+            font-size: 12px;
+        }
+        
+        /* Participant Filter Styles */
+        .participant-filter {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            grid-auto-rows: 65px;
+        }
+        
+        .participant-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 8px 4px;
+            background: #f5f5f5;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.3s ease;
+            font-size: 10px;
+        }
+        
+        .participant-item:hover {
+            background: #e8e8e8;
+        }
+        
+        .participant-item.active {
+            background: #18334a;
+            color: white;
+        }
+        
+        .participant-item.active .subtitle3 {
+            color: white;
+        }
+        
+        .participant-icon {
+            font-size: 24px;
+            margin-bottom: 4px;
+        }
+        
+        .participant-item .subtitle3 {
+            font-size: 10px;
+            font-weight: 500;
+            color: #18334a;
+            text-align: center;
+        }
+        
+        /* Severity Filter Styles */
+        .severity-filter {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .severity-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .severity-item:hover {
+            background: #f5f5f5;
+        }
+        
+        .severity-item input[type="checkbox"] {
+            display: none;
+        }
+        
+        .checkmark {
+            width: 20px;
+            height: 20px;
+            border: 2px solid #d4dadd;
+            border-radius: 4px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 12px;
+            flex-shrink: 0;
+        }
+        
+        .severity-item input[type="checkbox"]:checked + .checkmark {
+            background: #18334a;
+            border-color: #18334a;
+        }
+        
+        .severity-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+        }
+        
+        .severity-item .body1 {
+            font-size: 14px;
+            color: #18334a;
+            flex: 1;
+        }
+        
+        /* Category Filter Tags */
+        .category-filter-container {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        
+        .category-tag {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 6px 12px;
+            background: #f5f5f5;
+            border: 1px solid #d4dadd;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            color: #18334a;
+            transition: all 0.2s;
+        }
+        
+        .category-tag:hover {
+            background: #e8e8e8;
+            border-color: #18334a;
+        }
+        
+        .category-tag.active {
+            background: #18334a;
+            color: white;
+            border-color: #18334a;
+        }
+        
+        .filter-count {
+            background: rgba(255, 255, 255, 0.3);
+            padding: 2px 6px;
+            border-radius: 10px;
+            font-size: 12px;
+            font-weight: 600;
+        }
+        
+        .category-tag.active .filter-count {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        /* Hide/Show Button */
+        .btn-hideFilter {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            padding: 12px;
+            background: #f5f5f5;
+            border: none;
+            border-top: 1px solid #d4dadd;
+            cursor: pointer;
+            font-size: 14px;
+            color: #18334a;
+            transition: background 0.2s;
+        }
+        
+        .btn-hideFilter:hover {
+            background: #e8e8e8;
+        }
+        
+        /* Category Filter Panel (Modal) */
+        .category-filter-panel {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            width: 400px;
+            max-width: calc(100% - 40px);
+            max-height: calc(100vh - 40px);
+            background: white;
+            box-shadow: 0px 5px 15px rgba(0, 0, 0, 0.1);
+            border-radius: 8px;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        
+        .category-filter-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid #d4dadd;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .back-btn {
+            background: none;
+            border: none;
+            font-size: 18px;
+            cursor: pointer;
+            color: #18334a;
+            padding: 4px 8px;
+        }
+        
+        .back-btn:hover {
+            background: #f5f5f5;
+            border-radius: 4px;
+        }
+        
+        .category-filter-header h3 {
+            flex: 1;
+            font-size: 16px;
+            font-weight: 600;
+            color: #18334a;
+            margin: 0;
+        }
+        
+        .search-input {
+            flex: 1;
+            padding: 8px 12px;
+            border: 1px solid #d4dadd;
+            border-radius: 4px;
+            font-size: 14px;
+        }
+        
+        .category-filter-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        
+        .category-value {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px;
+            cursor: pointer;
+            border-radius: 4px;
+            transition: background 0.2s;
+        }
+        
+        .category-value:hover {
+            background: #f5f5f5;
+        }
+        
+        .category-value input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+        
+        .category-value label {
+            flex: 1;
+            cursor: pointer;
+            font-size: 14px;
+            color: #18334a;
+        }
+    </style>
+</head>
+<body>
+    <div class="loading" id="loading">
+        <div class="loading-spinner"></div>
+        <div id="loading-text">Loading accident data...</div>
+    </div>
+    <div id="map"></div>
+    
+    <!-- Filter Panel -->
+    <div class="filter-panel" id="filterPanel">
+        <div class="filter-panel-content">
+            <!-- Data Period Section -->
+            <div class="filter-item">
+                <p class="subtitle2">Data Period</p>
+                <div class="date-filter-container">
+                    <input 
+                        type="text" 
+                        id="dateRangeInput" 
+                        class="date-input" 
+                        placeholder="01.06.2021 - 30.06.2025" 
+                        readonly 
+                    />
+                    <button class="date-dropdown-btn" id="dateDropdownBtn">
+                        <span>▼</span>
+                    </button>
+                    <div class="date-menu" id="dateMenu" style="display: none;">
+                        <div class="date-value" data-range="last-month">Last Month</div>
+                        <div class="date-value" data-range="two-months-ago">Two Months Ago</div>
+                        <div class="date-value" data-range="2025">2025</div>
+                        <div class="date-value" data-range="2024">2024</div>
+                        <div class="date-value" data-range="2023">2023</div>
+                        <div class="date-value" data-range="2022">2022</div>
+                        <div class="date-value" data-range="2021">2021</div>
+                        <div class="date-value" data-range="all-time">All Time</div>
+                    </div>
+                </div>
+                <div class="date-error" id="dateError" style="display: none;"></div>
+            </div>
+            
+            <!-- Participants Section -->
+            <div class="filter-item">
+                <p class="subtitle2">Accident Participants</p>
+                <div class="participant-filter">
+                    <button class="participant-item" data-participant="all" data-selected="true">
+                        <span class="participant-icon">👥</span>
+                        <p class="subtitle3">All Participants</p>
+                    </button>
+                    <button class="participant-item" data-participant="pedestrian" data-selected="false">
+                        <span class="participant-icon">🚶</span>
+                        <p class="subtitle3">Pedestrians</p>
+                    </button>
+                    <button class="participant-item" data-participant="cyclist" data-selected="false">
+                        <span class="participant-icon">🚴</span>
+                        <p class="subtitle3">Cyclists</p>
+                    </button>
+                    <button class="participant-item" data-participant="motorcyclist" data-selected="false">
+                        <span class="participant-icon">🏍️</span>
+                        <p class="subtitle3">Motorcyclists</p>
+                    </button>
+                    <button class="participant-item" data-participant="public_transport" data-selected="false">
+                        <span class="participant-icon">🚌</span>
+                        <p class="subtitle3">Public Transport</p>
+                    </button>
+                    <button class="participant-item" data-participant="children" data-selected="false">
+                        <span class="participant-icon">👶</span>
+                        <p class="subtitle3">Children</p>
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Health Harm Section -->
+            <div class="filter-item">
+                <p class="subtitle2">Health Harm</p>
+                <div class="severity-filter">
+                    <label class="severity-item">
+                        <input type="checkbox" data-severity="Easy" checked>
+                        <span class="checkmark">✓</span>
+                        <span class="severity-color" style="background: #FFB81F;"></span>
+                        <span class="body1">Easy</span>
+                    </label>
+                    <label class="severity-item">
+                        <input type="checkbox" data-severity="Heavy" checked>
+                        <span class="checkmark">✓</span>
+                        <span class="severity-color" style="background: #FF7F24;"></span>
+                        <span class="body1">Heavy</span>
+                    </label>
+                    <label class="severity-item">
+                        <input type="checkbox" data-severity="With the dead" checked>
+                        <span class="checkmark">✓</span>
+                        <span class="severity-color" style="background: #FF001A;"></span>
+                        <span class="body1">With the dead</span>
+                    </label>
+                </div>
+            </div>
+            
+            <!-- Filters Section (Collapsible) -->
+            <div class="filter-item">
+                <p class="subtitle2">Filters</p>
+                <div class="category-filter-container">
+                    <!-- Accident Types -->
+                    <button class="category-tag" data-filter-type="category" id="categoryFilterBtn">
+                        <span>Accident Types</span>
+                        <span class="filter-count" id="categoryCount">0</span>
+                    </button>
+                    
+                    <!-- Traffic Violations -->
+                    <button class="category-tag" data-filter-type="violations" id="violationsFilterBtn">
+                        <span>Traffic Violations</span>
+                        <span class="filter-count" id="violationsCount">0</span>
+                    </button>
+                    
+                    <!-- Nearby Objects -->
+                    <button class="category-tag" data-filter-type="nearby" id="nearbyFilterBtn">
+                        <span>Nearby Objects</span>
+                        <span class="filter-count" id="nearbyCount">0</span>
+                    </button>
+                    
+                    <!-- Road Conditions -->
+                    <button class="category-tag" data-filter-type="road_conditions" id="roadConditionsFilterBtn">
+                        <span>Road Conditions</span>
+                        <span class="filter-count" id="roadConditionsCount">0</span>
+                    </button>
+                    
+                    <!-- Streets -->
+                    <button class="category-tag" data-filter-type="street" id="streetFilterBtn">
+                        <span>Streets</span>
+                        <span class="filter-count" id="streetCount">0</span>
+                    </button>
+                    
+                    <!-- Weather -->
+                    <button class="category-tag" data-filter-type="weather" id="weatherFilterBtn">
+                        <span>Weather</span>
+                        <span class="filter-count" id="weatherCount">0</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Hide/Show Toggle Button -->
+        <button class="btn-hideFilter" id="hideFilterBtn">
+            <span>▼</span>
+            <span>Hide</span>
+        </button>
+    </div>
+    
+    <!-- Category Filter Modal/Panel -->
+    <div class="category-filter-panel" id="categoryFilterPanel" style="display: none;">
+        <div class="category-filter-header">
+            <button class="back-btn" id="backBtn">← Back</button>
+            <h3 id="categoryFilterTitle">Filter</h3>
+            <input 
+                type="text" 
+                class="search-input" 
+                id="categorySearchInput" 
+                placeholder="Search..." 
+            />
+        </div>
+        <div class="category-filter-content" id="categoryFilterContent">
+            <!-- Dynamically populated with filter options -->
+        </div>
+    </div>
+    
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+    <script src="https://unpkg.com/leaflet.heat@0.2.0/dist/leaflet-heat.js"></script>
+    
+    <script>
+        // ============================================
+        // 1. ZOOM THRESHOLD CONSTANTS
+        // ============================================
+        const MIN_ZOOM_FOR_POINTS = 13;  // Switch to individual points/clusters mode
+        const MIN_ZOOM_FOR_HEATMAP = 6;  // Minimum zoom for heat map display
+        const POINT_RADIUS_IN_PIXELS = 7; // Base radius for point circles in pixels (doubled from 5)
+        
+        // ============================================
+        // 2. MAP INITIALIZATION
+        // ============================================
+        // Initialize map centered on St. Petersburg
+        const map = L.map('map', {
+            center: [59.9343, 30.3351], // St. Petersburg coordinates
+            zoom: 12,
+            minZoom: 1,
+            maxZoom: 20,
+            zoomSnap: 1, // Only integer zoom levels
+            zoomDelta: 1
+        });
+        
+        // Add tile layer (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© OpenStreetMap contributors',
+            maxZoom: 19
+        }).addTo(map);
+        
+        // Initialize Layer Groups
+        const pointLayerGroup = L.layerGroup(); // For individual points/clusters
+        let heatmapLayer = null; // Will be initialized when needed
+        const hotspotLayer = L.layerGroup(); // For top 10 hotspot markers
+        
+        // Create pie chart icon for cluster with severity breakdown (only 3 severities)
+        function createPieChartIcon(count, severityCounts, size) {
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const outerRadius = size / 2 - 2; // Leave space for white border
+            const innerRadius = size / 4; // Radius for white center circle
+            const borderWidth = 2;
+            
+            // Only count the 3 severity types
+            const total = severityCounts.easy + severityCounts.heavy + severityCounts.withDead;
+            
+            if (total > 0) {
+                let currentAngle = -Math.PI / 2;
+                
+                // Easy (Yellow) - draw as ring segment
+                if (severityCounts.easy > 0) {
+                    const sliceAngle = (severityCounts.easy / total) * 2 * Math.PI;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, outerRadius, currentAngle, currentAngle + sliceAngle);
+                    ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+                    ctx.closePath();
+                    ctx.fillStyle = '#FFB81F';
+                    ctx.fill();
+                    currentAngle += sliceAngle;
+                }
+                
+                // Heavy (Orange) - draw as ring segment
+                if (severityCounts.heavy > 0) {
+                    const sliceAngle = (severityCounts.heavy / total) * 2 * Math.PI;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, outerRadius, currentAngle, currentAngle + sliceAngle);
+                    ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+                    ctx.closePath();
+                    ctx.fillStyle = '#FF7F24';
+                    ctx.fill();
+                    currentAngle += sliceAngle;
+                }
+                
+                // With the dead (Red) - draw as ring segment
+                if (severityCounts.withDead > 0) {
+                    const sliceAngle = (severityCounts.withDead / total) * 2 * Math.PI;
+                    ctx.beginPath();
+                    ctx.arc(centerX, centerY, outerRadius, currentAngle, currentAngle + sliceAngle);
+                    ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+                    ctx.closePath();
+                    ctx.fillStyle = '#FF001A';
+                    ctx.fill();
+                    currentAngle += sliceAngle;
+                }
+            }
+            
+            // White center circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            
+            // White border around the pie chart
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+            
+            // Count text on white center circle
+            ctx.fillStyle = '#18334a';
+            ctx.font = `bold ${Math.max(10, Math.min(16, size / 4.5))}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(count, centerX, centerY);
+            
+            return canvas.toDataURL();
+        }
+        
+        // Cluster group for points mode
+        const clusterGroup = L.markerClusterGroup({
+            chunkedLoading: true,
+            chunkInterval: 200,
+            chunkDelay: 50,
+            maxClusterRadius: 50, // Reduced from 80 to make clusters break down twice as easily
+            spiderfyOnMaxZoom: true,
+            showCoverageOnHover: false,
+            zoomToBoundsOnClick: false, // Disabled - show popup instead of zooming
+            removeOutsideVisibleBounds: true,
+            animate: true,
+            animateAddingMarkers: false,
+            // Custom icon creation function with pie chart
+            iconCreateFunction: function(cluster) {
+                const count = cluster.getChildCount();
+                
+                // Calculate dynamic size based on count
+                // Smaller counts = smaller circles
+                // Using square root for smooth scaling
+                const minSize = 25;  // Minimum size for small clusters (increased)
+                const maxSize = 75;  // Maximum size for large clusters (increased)
+                const size = Math.min(maxSize, Math.max(minSize, 25 + Math.sqrt(count) * 3.5));
+                
+                // Count severities in cluster (only 3 types: Easy, Heavy, With the dead)
+                const markers = cluster.getAllChildMarkers();
+                const severityCounts = {
+                    easy: 0,
+                    heavy: 0,
+                    withDead: 0
+                };
+                
+                markers.forEach(marker => {
+                    if (marker.featureData && marker.featureData.severity) {
+                        const severity = marker.featureData.severity;
+                        if (severity === 'Easy') {
+                            severityCounts.easy++;
+                        } else if (severity === 'Heavy') {
+                            severityCounts.heavy++;
+                        } else if (severity === 'With the dead') {
+                            severityCounts.withDead++;
+                        } else {
+                            // Map unknown severities to Easy as default
+                            severityCounts.easy++;
+                        }
+                    } else {
+                        // Map missing severity to Easy as default
+                        severityCounts.easy++;
+                    }
+                });
+                
+                // Create pie chart icon
+                const iconUrl = createPieChartIcon(count, severityCounts, size);
+                
+                return L.divIcon({
+                    html: `<img src="${iconUrl}" style="width: ${size}px; height: ${size}px;" />`,
+                    className: 'marker-cluster',
+                    iconSize: L.point(size, size),
+                    iconAnchor: L.point(size / 2, size / 2)
+                });
+            }
+        });
+        
+        // ============================================
+        // 3. GEOJSON DATA LOADING
+        // ============================================
+        let allAccidents = []; // Store all loaded features
+        let filteredAccidents = []; // Store currently visible features
+        
+        async function loadGeoJSON() {
+            try {
+                const response = await fetch('english_clipped.geojson');
+                const geojson = await response.json();
+                allAccidents = geojson.features;
+                
+                // Filter out features without valid coordinates
+                allAccidents = allAccidents.filter(feature => {
+                    const coords = feature.geometry.coordinates;
+                    return coords && coords.length === 2 &&
+                           !isNaN(coords[0]) && !isNaN(coords[1]) &&
+                           coords[0] !== 0 && coords[1] !== 0;
+                });
+                
+                // Initialize filtered accidents
+                filteredAccidents = allAccidents;
+                
+                // Hide loading indicator
+                document.getElementById('loading').classList.add('hidden');
+            } catch (error) {
+                console.error('Error loading GeoJSON:', error);
+                document.getElementById('loading-text').textContent = 'Error loading data. Check console for details.';
+            }
+        }
+        
+        // ============================================
+        // 4. ZOOM CHANGE DETECTION AND MODE SWITCHING
+        // ============================================
+        let currentZoom = map.getZoom();
+        let previousZoom = currentZoom;
+        
+        map.on('zoomend', function() {
+            currentZoom = map.getZoom();
+            
+            // Check if zoom crossed a threshold
+            const crossedHeatmapThreshold = 
+                (currentZoom >= MIN_ZOOM_FOR_HEATMAP && previousZoom < MIN_ZOOM_FOR_HEATMAP) ||
+                (currentZoom < MIN_ZOOM_FOR_HEATMAP && previousZoom >= MIN_ZOOM_FOR_HEATMAP);
+            
+            const crossedPointsThreshold = 
+                (currentZoom >= MIN_ZOOM_FOR_POINTS && previousZoom < MIN_ZOOM_FOR_POINTS) ||
+                (currentZoom < MIN_ZOOM_FOR_POINTS && previousZoom >= MIN_ZOOM_FOR_POINTS);
+            
+            if (crossedHeatmapThreshold || crossedPointsThreshold) {
+                // Mode switch required
+                recreateMapObjects();
+            } else if (currentZoom >= MIN_ZOOM_FOR_POINTS && previousZoom !== currentZoom) {
+                // Update point sizes only
+                updatePointRadius();
+            }
+            
+            previousZoom = currentZoom;
+            updateURL(); // Sync with URL
+        });
+        
+        function recreateMapObjects() {
+            // Clear existing visualizations
+            clearObjects();
+            
+            // Get current zoom
+            const zoom = map.getZoom();
+            
+            // Filter accidents that have valid points
+            const visibleAccidents = filteredAccidents.filter(acc => {
+                const coords = acc.geometry.coordinates;
+                return coords && coords.length === 2;
+            });
+            
+            if (zoom >= MIN_ZOOM_FOR_POINTS) {
+                // Points/Clusters mode
+                recreatePoints(visibleAccidents);
+            } else if (zoom >= MIN_ZOOM_FOR_HEATMAP) {
+                // Heat map mode
+                drawHeatmap(visibleAccidents);
+            }
+            // If zoom < MIN_ZOOM_FOR_HEATMAP, nothing is displayed (already cleared)
+        }
+        
+        function clearObjects() {
+            // Remove all points and clusters
+            clusterGroup.clearLayers();
+            pointLayerGroup.clearLayers();
+            hotspotLayer.clearLayers();
+            
+            // Remove heat map
+            if (heatmapLayer) {
+                map.removeLayer(heatmapLayer);
+                heatmapLayer = null;
+            }
+        }
+        
+        // ============================================
+        // 5. POINTS/CLUSTERS MODE (Zoom ≥ 12)
+        // ============================================
+        // Severity to Number Mapping (only 3 values)
+        function severityToNumber(severity) {
+            const severityMap = {
+                'Easy': 1,
+                'Heavy': 2,
+                'With the dead': 3
+            };
+            return severityMap[severity] || 1; // Default to Easy (1)
+        }
+        
+        const COLOR_BY_SEVERITY = {
+            1: '#FFB81F',  // Easy - Yellow
+            2: '#FF7F24',  // Heavy - Orange
+            3: '#FF001A'   // With the dead - Red
+        };
+        
+        // Calculate Point Radius Based on Zoom
+        function calculateMetersPerPixel(latitude, zoom) {
+            // Earth's radius in meters
+            const EARTH_RADIUS = 6378137;
+            // Tile size in pixels
+            const TILE_SIZE = 256;
+            
+            const result = (2 * Math.PI * EARTH_RADIUS * Math.cos((latitude * Math.PI) / 180)) /
+                          (TILE_SIZE * Math.pow(2, zoom));
+            
+            return result;
+        }
+        
+        function getPointRadius(latitude, zoom) {
+            const metersPerPixel = calculateMetersPerPixel(latitude, zoom);
+            return metersPerPixel * POINT_RADIUS_IN_PIXELS;
+        }
+        
+        // Create Circle Markers for Points
+        function createPointMarker(feature, zoom) {
+            const coords = feature.geometry.coordinates;
+            const [lng, lat] = coords;
+            const props = feature.properties;
+            
+            // Calculate radius in meters
+            const radiusInMeters = getPointRadius(lat, zoom);
+            
+            // Get severity and color
+            const severityNum = severityToNumber(props.severity);
+            const color = COLOR_BY_SEVERITY[severityNum] || COLOR_BY_SEVERITY[1];
+            
+            // Create circle marker
+            const circle = L.circleMarker([lat, lng], {
+                radius: POINT_RADIUS_IN_PIXELS, // Visual radius in pixels
+                fillColor: color,
+                color: color,
+                weight: 0,
+                fillOpacity: 1,
+                pane: 'markerPane'
+            });
+            
+            // Store feature data in marker
+            circle.featureData = {
+                id: props.id,
+                severity: props.severity,
+                category: props.category,
+                datetime: props.datetime,
+                address: props.address,
+                dead_count: props.dead_count || 0,
+                injured_count: props.injured_count || 0,
+                region: props.region
+            };
+            
+            // Add popup/balloon content
+            circle.bindPopup(createPopupContent(circle.featureData));
+            
+            // Add click handler
+            circle.on('click', function() {
+                openBalloon(circle);
+                updateURLWithActiveObject(props.id);
+            });
+            
+            return circle;
+        }
+        
+        // Recreate Points Function
+        function recreatePoints(accidents) {
+            // Clear existing
+            clusterGroup.clearLayers();
+            pointLayerGroup.clearLayers();
+            
+            const zoom = map.getZoom();
+            const markers = [];
+            
+            accidents.forEach(feature => {
+                const marker = createPointMarker(feature, zoom);
+                markers.push(marker);
+            });
+            
+            // Add markers to cluster group
+            clusterGroup.addLayers(markers);
+            map.addLayer(clusterGroup);
+            
+            // Handle cluster click events - show date-grouped popup instead of zooming
+            clusterGroup.on('clusterclick', function(a) {
+                a.originalEvent.preventDefault();
+                a.originalEvent.stopPropagation();
+                
+                const cluster = a.layer;
+                const markers = cluster.getAllChildMarkers();
+                
+                // Create cluster popup with date-grouped list
+                const popupContent = createClusterPopup(markers);
+                cluster.bindPopup(popupContent, {
+                    maxWidth: 400,
+                    maxHeight: 500
+                }).openPopup();
+            });
+            
+            // Open balloon if URL has active-obj parameter
+            openActiveObjectFromURL();
+        }
+        
+        // Update Point Radius on Zoom (without mode switch)
+        function updatePointRadius() {
+            const zoom = map.getZoom();
+            
+            clusterGroup.eachLayer(function(layer) {
+                if (layer instanceof L.CircleMarker) {
+                    // Individual point - update radius calculation
+                    const coords = layer.getLatLng();
+                    const radiusInMeters = getPointRadius(coords.lat, zoom);
+                    // Note: CircleMarker radius is in pixels, not meters
+                    // The visual size stays constant, but the actual coverage changes
+                } else if (layer instanceof L.MarkerCluster) {
+                    // Cluster - no need to update
+                }
+            });
+            
+            // Force redraw
+            clusterGroup.refreshClusters();
+            
+            // Reopen balloon if needed
+            openActiveObjectFromURL();
+        }
+        
+        // ============================================
+        // 6. HEAT MAP MODE (Zoom 6-11)
+        // ============================================
+        // Create Heat Map Features
+        function createHeatmapFeatures(accidents) {
+            return accidents.map(feature => {
+                const coords = feature.geometry.coordinates;
+                const [lng, lat] = coords;
+                const props = feature.properties;
+                
+                // Use severity as weight (convert to number)
+                const severityNum = severityToNumber(props.severity);
+                // Weight: 0.5 for Easy (1), 2.0 for Heavy (2), 3.0 for With the dead (3)
+                const weight = severityNum === 1 ? 0.5 : (severityNum === 2 ? 2.0 : 3.0);
+                
+                return [lat, lng, weight];
+            });
+        }
+        
+        // Find top 10 hotspots
+        function findTop10Hotspots(accidents) {
+            if (accidents.length === 0) return [];
+            
+            // Use grid-based approach to aggregate nearby accidents
+            const gridSize = 0.005; // Grid size in degrees (~500m)
+            const grid = new Map();
+            
+            // Aggregate accidents into grid cells
+            accidents.forEach(feature => {
+                const coords = feature.geometry.coordinates;
+                const [lng, lat] = coords;
+                
+                const gridX = Math.floor(lng / gridSize);
+                const gridY = Math.floor(lat / gridSize);
+                const cellKey = `${gridX}_${gridY}`;
+                
+                if (!grid.has(cellKey)) {
+                    grid.set(cellKey, {
+                        lat: 0,
+                        lng: 0,
+                        count: 0,
+                        accidents: []
+                    });
+                }
+                
+                const cell = grid.get(cellKey);
+                cell.lat += lat;
+                cell.lng += lng;
+                cell.count++;
+                cell.accidents.push(feature);
+            });
+            
+            // Convert grid cells to hotspots and sort by count
+            const hotspots = Array.from(grid.values()).map(cell => ({
+                lat: cell.lat / cell.count,
+                lng: cell.lng / cell.count,
+                count: cell.count,
+                accidents: cell.accidents
+            }));
+            
+            // Sort by count (descending) and take top 10
+            hotspots.sort((a, b) => b.count - a.count);
+            return hotspots.slice(0, 10);
+        }
+        
+        // Display top 10 hotspots as highlighted points
+        function displayTop10Hotspots(accidents) {
+            // Clear existing hotspots
+            hotspotLayer.clearLayers();
+            
+            // Find top 10 hotspots
+            const hotspots = findTop10Hotspots(accidents);
+            
+            // Create markers for each hotspot
+            hotspots.forEach((hotspot, index) => {
+                // Create a circle marker with smaller size and distinct color
+                const marker = L.circleMarker([hotspot.lat, hotspot.lng], {
+                    radius: 6 + (index < 3 ? 2 : 0), // Top 3 are slightly larger
+                    fillColor: '#FF001A', // Red color for hotspots
+                    color: '#FFFFFF',
+                    weight: 2,
+                    fillOpacity: 0.8,
+                    pane: 'markerPane'
+                });
+                
+                // Add popup with hotspot information
+                const popupContent = `
+                    <div class="hotspot-popup">
+                        <h4>Hotspot #${index + 1}</h4>
+                        <p><strong>${hotspot.count} accidents</strong> in this area</p>
+                        <p>Click to see details</p>
+                    </div>
+                `;
+                marker.bindPopup(popupContent);
+                
+                // Store hotspot data
+                marker.hotspotData = {
+                    rank: index + 1,
+                    count: hotspot.count,
+                    accidents: hotspot.accidents
+                };
+                
+                // Add click handler to show all accidents in this hotspot
+                marker.on('click', function() {
+                    // Create a list of accidents in this hotspot
+                    let accidentsList = '<div class="hotspot-accidents-list"><h4>Accidents in Hotspot #' + (index + 1) + '</h4><ul>';
+                    hotspot.accidents.slice(0, 20).forEach(accident => {
+                        const props = accident.properties;
+                        const date = new Date(props.datetime);
+                        accidentsList += `<li>${date.toLocaleDateString()} - ${props.category || 'Accident'}</li>`;
+                    });
+                    if (hotspot.accidents.length > 20) {
+                        accidentsList += `<li><em>...and ${hotspot.accidents.length - 20} more</em></li>`;
+                    }
+                    accidentsList += '</ul></div>';
+                    marker.setPopupContent(accidentsList).openPopup();
+                });
+                
+                hotspotLayer.addLayer(marker);
+            });
+            
+            // Add hotspot layer to map if not already added
+            if (!map.hasLayer(hotspotLayer)) {
+                hotspotLayer.addTo(map);
+            }
+        }
+        
+        // Draw Heat Map Function
+        function drawHeatmap(accidents) {
+            // Remove existing heat map
+            if (heatmapLayer) {
+                map.removeLayer(heatmapLayer);
+            }
+            
+            // Create heat map features
+            const heatData = createHeatmapFeatures(accidents);
+            
+            if (heatData.length === 0) {
+                return;
+            }
+            
+            // Calculate dynamic max intensity based on data
+            const maxWeight = Math.max(...heatData.map(d => d[2]));
+            const dynamicMax = Math.max(maxWeight * 0.8, 3); // Use 80% of max or minimum of 3
+            
+            // Get current zoom for radius/blur adjustment
+            const zoom = map.getZoom();
+            const baseRadius = 15;
+            const baseBlur = 15;
+            // Adjust radius and blur based on zoom (larger at lower zoom)
+            const radius = baseRadius + (11 - Math.min(zoom, 11)) * 2;
+            const blur = baseBlur + (11 - Math.min(zoom, 11)) * 2;
+            
+            // Initialize Leaflet.heat with configuration
+            heatmapLayer = L.heatLayer(heatData, {
+                radius: Math.max(15, Math.min(radius, 50)),  // Radius of each "point" in pixels
+                blur: Math.max(15, Math.min(blur, 50)),      // Blur factor (higher = smoother)
+                maxZoom: 18,                                 // Maximum zoom level
+                max: dynamicMax,                             // Dynamic maximum intensity
+                gradient: {
+                    0.0: 'rgba(126, 171, 85, 0.0)',   // Green (transparent)
+                    0.2: 'rgba(126, 171, 85, 0.6)',   // Green
+                    0.4: 'rgba(255, 254, 85, 0.7)',   // Yellow
+                    0.6: 'rgba(245, 193, 66, 0.8)',   // Orange
+                    0.8: 'rgba(223, 130, 68, 0.9)',   // Dark orange
+                    1.0: 'rgba(176, 36, 24, 1.0)'     // Red
+                },
+                minOpacity: 0.5
+            });
+            
+            heatmapLayer.addTo(map);
+            
+            // Display top 10 hotspots as highlighted points
+            displayTop10Hotspots(accidents);
+        }
+        
+        // ============================================
+        // 7. FILTERING SYSTEM
+        // ============================================
+        const filterState = {
+            dateRange: {
+                start: null,
+                end: null
+            },
+            participants: ['all'], // Default: all participants
+            severity: ['Easy', 'Heavy', 'With the dead'], // All selected by default
+            category: [],
+            violations: [],
+            nearby: [],
+            roadConditions: [],
+            streets: [],
+            weather: []
+        };
+        
+        // Extract unique values from GeoJSON for filter options
+        let filterOptions = {
+            categories: new Set(),
+            violations: new Set(),
+            nearby: new Set(),
+            roadConditions: new Set(),
+            streets: new Set(),
+            weather: new Set()
+        };
+        
+        // Initialize filter options from data
+        function initializeFilterOptions() {
+            filterOptions = {
+                categories: new Set(),
+                violations: new Set(),
+                nearby: new Set(),
+                roadConditions: new Set(),
+                streets: new Set(),
+                weather: new Set()
+            };
+            
+            allAccidents.forEach(feature => {
+                const props = feature.properties;
+                
+                // Categories
+                if (props.category) {
+                    filterOptions.categories.add(props.category);
+                }
+                
+                // Nearby objects (array)
+                if (props.nearby && Array.isArray(props.nearby)) {
+                    props.nearby.forEach(item => filterOptions.nearby.add(item));
+                }
+                
+                // Road conditions (array)
+                if (props.road_conditions && Array.isArray(props.road_conditions)) {
+                    props.road_conditions.forEach(item => filterOptions.roadConditions.add(item));
+                }
+                
+                // Weather (array)
+                if (props.weather && Array.isArray(props.weather)) {
+                    props.weather.forEach(item => filterOptions.weather.add(item));
+                }
+                
+                // Streets (from address)
+                if (props.address) {
+                    // Extract street name (simplified)
+                    const streetMatch = props.address.match(/([A-Za-z\s]+(?:street|st|avenue|ave|road|rd|boulevard|blvd|lane|ln))/i);
+                    if (streetMatch) {
+                        filterOptions.streets.add(streetMatch[1].trim());
+                    }
+                }
+                
+                // Violations (extract from participants/vehicles)
+                if (props.participants && Array.isArray(props.participants)) {
+                    props.participants.forEach(participant => {
+                        if (typeof participant === 'string') {
+                            try {
+                                const parsed = JSON.parse(participant);
+                                if (parsed.violations && Array.isArray(parsed.violations)) {
+                                    parsed.violations.forEach(v => filterOptions.violations.add(v));
+                                }
+                            } catch (e) {
+                                // Not JSON, skip
+                            }
+                        }
+                    });
+                }
+            });
+            
+            // Convert Sets to sorted Arrays
+            filterOptions.categories = Array.from(filterOptions.categories).sort();
+            filterOptions.violations = Array.from(filterOptions.violations).sort();
+            filterOptions.nearby = Array.from(filterOptions.nearby).sort();
+            filterOptions.roadConditions = Array.from(filterOptions.roadConditions).sort();
+            filterOptions.streets = Array.from(filterOptions.streets).sort();
+            filterOptions.weather = Array.from(filterOptions.weather).sort();
+        }
+        
+        // Set default date range (all available data)
+        function setDefaultDateRange() {
+            if (allAccidents.length === 0) return;
+            
+            let minDate = new Date(allAccidents[0].properties.datetime);
+            let maxDate = new Date(allAccidents[0].properties.datetime);
+            
+            allAccidents.forEach(feature => {
+                const date = new Date(feature.properties.datetime);
+                if (date < minDate) minDate = date;
+                if (date > maxDate) maxDate = date;
+            });
+            
+            filterState.dateRange.start = minDate.toISOString().split('T')[0];
+            filterState.dateRange.end = maxDate.toISOString().split('T')[0];
+            
+            updateDateRangeDisplay();
+        }
+        
+        // Enhanced Apply Filters Function
+        function applyFilters() {
+            filteredAccidents = allAccidents.filter(feature => {
+                const props = feature.properties;
+                
+                // Date range filter
+                if (filterState.dateRange.start && filterState.dateRange.end) {
+                    const accidentDate = new Date(props.datetime);
+                    const startDate = new Date(filterState.dateRange.start);
+                    const endDate = new Date(filterState.dateRange.end);
+                    endDate.setHours(23, 59, 59, 999); // Include entire end date
+                    
+                    if (accidentDate < startDate || accidentDate > endDate) {
+                        return false;
+                    }
+                }
+                
+                // Severity filter
+                if (filterState.severity.length > 0) {
+                    if (!filterState.severity.includes(props.severity)) {
+                        return false;
+                    }
+                }
+                
+                // Category filter
+                if (filterState.category.length > 0) {
+                    if (!filterState.category.includes(props.category)) {
+                        return false;
+                    }
+                }
+                
+                // Participant filter
+                if (filterState.participants.length > 0 && !filterState.participants.includes('all')) {
+                    // Check if any participant matches
+                    let hasMatch = false;
+                    
+                    // Check participant_categories property
+                    if (props.participant_categories && Array.isArray(props.participant_categories)) {
+                        hasMatch = filterState.participants.some(p => {
+                            const participantMap = {
+                                'pedestrian': 'Pedestrians',
+                                'cyclist': 'Cyclists',
+                                'motorcyclist': 'Motorcyclists',
+                                'public_transport': 'General transport',
+                                'children': 'Children'
+                            };
+                            return props.participant_categories.includes(participantMap[p]);
+                        });
+                    }
+                    
+                    // Also check participants array
+                    if (!hasMatch && props.participants && Array.isArray(props.participants)) {
+                        props.participants.forEach(participant => {
+                            if (typeof participant === 'string') {
+                                try {
+                                    const parsed = JSON.parse(participant);
+                                    if (parsed.role) {
+                                        const role = parsed.role.toLowerCase();
+                                        if (filterState.participants.includes(role) || 
+                                            (role === 'passenger' && filterState.participants.includes('public_transport'))) {
+                                            hasMatch = true;
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Not JSON, skip
+                                }
+                            }
+                        });
+                    }
+                    
+                    if (!hasMatch) {
+                        return false;
+                    }
+                }
+                
+                // Nearby objects filter
+                if (filterState.nearby.length > 0) {
+                    const nearby = props.nearby || [];
+                    const hasMatch = filterState.nearby.some(filterNearby => 
+                        Array.isArray(nearby) && nearby.includes(filterNearby)
+                    );
+                    if (!hasMatch) {
+                        return false;
+                    }
+                }
+                
+                // Road conditions filter
+                if (filterState.roadConditions.length > 0) {
+                    const roadConditions = props.road_conditions || [];
+                    const hasMatch = filterState.roadConditions.some(filterRC => 
+                        Array.isArray(roadConditions) && roadConditions.includes(filterRC)
+                    );
+                    if (!hasMatch) {
+                        return false;
+                    }
+                }
+                
+                // Weather filter
+                if (filterState.weather.length > 0) {
+                    const weather = props.weather || [];
+                    const hasMatch = filterState.weather.some(filterWeather => 
+                        Array.isArray(weather) && weather.includes(filterWeather)
+                    );
+                    if (!hasMatch) {
+                        return false;
+                    }
+                }
+                
+                // Street filter
+                if (filterState.streets.length > 0) {
+                    const address = props.address || '';
+                    const hasMatch = filterState.streets.some(street =>
+                        address.toLowerCase().includes(street.toLowerCase())
+                    );
+                    if (!hasMatch) {
+                        return false;
+                    }
+                }
+                
+                // Violations filter (check in participants/vehicles)
+                if (filterState.violations.length > 0) {
+                    let hasViolation = false;
+                    
+                    // Check participants
+                    if (props.participants && Array.isArray(props.participants)) {
+                        props.participants.forEach(participant => {
+                            if (typeof participant === 'string') {
+                                try {
+                                    const parsed = JSON.parse(participant);
+                                    if (parsed.violations && Array.isArray(parsed.violations)) {
+                                        if (parsed.violations.some(v => filterState.violations.includes(v))) {
+                                            hasViolation = true;
+                                        }
+                                    }
+                                } catch (e) {
+                                    // Not JSON
+                                }
+                            }
+                        });
+                    }
+                    
+                    // Check vehicles
+                    if (!hasViolation && props.vehicles && Array.isArray(props.vehicles)) {
+                        props.vehicles.forEach(vehicle => {
+                            if (typeof vehicle === 'string') {
+                                try {
+                                    const parsed = JSON.parse(vehicle);
+                                    if (parsed.participants && Array.isArray(parsed.participants)) {
+                                        parsed.participants.forEach(p => {
+                                            if (p.violations && Array.isArray(p.violations)) {
+                                                if (p.violations.some(v => filterState.violations.includes(v))) {
+                                                    hasViolation = true;
+                                                }
+                                            }
+                                        });
+                                    }
+                                } catch (e) {
+                                    // Not JSON
+                                }
+                            }
+                        });
+                    }
+                    
+                    if (!hasViolation) {
+                        return false;
+                    }
+                }
+                
+                return true;
+            });
+            
+            // Update visualization with filtered data
+            updateVisualization();
+            updateStatistics();
+            updateFilterCounts();
+        }
+        
+        // ============================================
+        // 8. POPUP/BALLOON CONTENT
+        // ============================================
+        // Create Popup Content for Individual Points
+        function createPopupContent(featureData) {
+            const date = new Date(featureData.datetime);
+            const formattedDate = date.toLocaleString('en-US', {
+                year: 'numeric',
+                month: 'numeric',
+                day: 'numeric',
+                hour: 'numeric',
+                minute: 'numeric'
+            });
+            
+            let injuredMessage = `${featureData.injured_count} people injured`;
+            if (featureData.injured_count === 1) {
+                injuredMessage = '1 person injured';
+            }
+            
+            let deadMessage = `${featureData.dead_count} people died`;
+            if (featureData.dead_count === 1) {
+                deadMessage = '1 person died';
+            }
+            
+            return `
+                <div class="balloon-content">
+                    <h4 class="subtitle1">${featureData.category || 'Accident'}</h4>
+                    <p class="balloon-time body3">${formattedDate}</p>
+                    ${featureData.address ? `<p class="balloon-address body3">${featureData.address}</p>` : ''}
+                    <div class="balloon-injured">
+                        ${featureData.injured_count > 0 ? `<p class="subtitle3" style="color: #FFB81F;">${injuredMessage}</p>` : ''}
+                        ${featureData.dead_count > 0 ? `<p class="subtitle3" style="color: #FF001A;">${deadMessage}</p>` : ''}
+                    </div>
+                    <div class="balloon-footer">
+                        <a href="#" class="btn-light" onclick="showDetails(${featureData.id}); return false;">View Accident Details</a>
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Group accidents by date
+        function groupAccidentsByDate(markers) {
+            const grouped = {};
+            
+            markers.forEach(marker => {
+                if (marker.featureData && marker.featureData.datetime) {
+                    const date = new Date(marker.featureData.datetime);
+                    const dateKey = date.toLocaleDateString('en-US', { 
+                        year: 'numeric', 
+                        month: 'long', 
+                        day: 'numeric' 
+                    });
+                    
+                    if (!grouped[dateKey]) {
+                        grouped[dateKey] = [];
+                    }
+                    grouped[dateKey].push(marker.featureData);
+                }
+            });
+            
+            // Sort dates (most recent first)
+            const sortedDates = Object.keys(grouped).sort((a, b) => {
+                return new Date(b) - new Date(a);
+            });
+            
+            return { grouped, sortedDates };
+        }
+        
+        // Create Cluster Popup Content with dates
+        function createClusterPopup(markers) {
+            const count = markers.length;
+            const { grouped, sortedDates } = groupAccidentsByDate(markers);
+            
+            // Generate unique ID for this popup
+            const popupId = 'cluster-popup-' + Date.now();
+            
+            let dateListHTML = '';
+            sortedDates.forEach((dateKey, index) => {
+                const accidents = grouped[dateKey];
+                const dateId = `date-${popupId}-${index}`;
+                const detailsId = `details-${popupId}-${index}`;
+                dateListHTML += `
+                    <div class="date-group">
+                        <div class="date-header" onclick="toggleDateDetails('${dateId}', '${detailsId}')">
+                            <span class="date-text">${dateKey}</span>
+                            <span class="date-count">(${accidents.length} accident${accidents.length !== 1 ? 's' : ''})</span>
+                            <span class="date-arrow" id="${dateId}-arrow">▼</span>
+                        </div>
+                        <div class="date-details" id="${detailsId}" style="display: none;">
+                            ${accidents.map((accident, accIndex) => {
+                                // Normalize severity to one of the 3 values
+                                let severity = accident.severity || 'Easy';
+                                let severityClass = 'severity-easy';
+                                
+                                if (severity === 'Heavy') {
+                                    severity = 'Heavy';
+                                    severityClass = 'severity-heavy';
+                                } else if (severity === 'With the dead') {
+                                    severity = 'With the dead';
+                                    severityClass = 'severity-with-the-dead';
+                                } else {
+                                    severity = 'Easy';
+                                    severityClass = 'severity-easy';
+                                }
+                                
+                                return `
+                                <div class="accident-item">
+                                    <div class="accident-time">${new Date(accident.datetime).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })}</div>
+                                    <div class="accident-info">
+                                        <div class="accident-category">${accident.category || 'Accident'}</div>
+                                        ${accident.address ? `<div class="accident-address">${accident.address}</div>` : ''}
+                                        <div class="accident-severity ${severityClass}">${severity}</div>
+                                        ${accident.injured_count > 0 ? `<div class="accident-injured">${accident.injured_count} injured</div>` : ''}
+                                        ${accident.dead_count > 0 ? `<div class="accident-dead">${accident.dead_count} dead</div>` : ''}
+                                    </div>
+                                </div>
+                            `;
+                            }).join('')}
+                        </div>
+                    </div>
+                `;
+            });
+            
+            return `
+                <div class="cluster-popup" id="${popupId}">
+                    <h4>${count} Accidents</h4>
+                    <div class="dates-list">
+                        ${dateListHTML}
+                    </div>
+                </div>
+            `;
+        }
+        
+        // Toggle date details visibility
+        function toggleDateDetails(arrowId, detailsId) {
+            const details = document.getElementById(detailsId);
+            const arrow = document.getElementById(arrowId + '-arrow');
+            
+            if (details.style.display === 'none') {
+                details.style.display = 'block';
+                arrow.textContent = '▲';
+            } else {
+                details.style.display = 'none';
+                arrow.textContent = '▼';
+            }
+        }
+        
+        // Make toggleDateDetails available globally
+        window.toggleDateDetails = toggleDateDetails;
+        
+        // Open Balloon Function
+        function openBalloon(marker) {
+            marker.openPopup();
+            updateURLWithActiveObject(marker.featureData.id);
+        }
+        
+        function updateURLWithActiveObject(id) {
+            const url = new URL(window.location);
+            url.searchParams.set('active-obj', id);
+            window.history.pushState(null, '', url);
+        }
+        
+        function openActiveObjectFromURL() {
+            const url = new URL(window.location);
+            const activeId = url.searchParams.get('active-obj');
+            if (activeId) {
+                clusterGroup.eachLayer(function(layer) {
+                    if (layer instanceof L.CircleMarker && layer.featureData && layer.featureData.id == activeId) {
+                        openBalloon(layer);
+                    } else if (layer instanceof L.MarkerCluster) {
+                        const markers = layer.getAllChildMarkers();
+                        const targetMarker = markers.find(m => m.featureData && m.featureData.id == activeId);
+                        if (targetMarker) {
+                            map.setView(targetMarker.getLatLng(), map.getZoom());
+                            openBalloon(targetMarker);
+                        }
+                    }
+                });
+            }
+        }
+        
+        // Placeholder for showDetails function
+        function showDetails(id) {
+            console.log('Show details for accident:', id);
+            // Implement your details view here
+        }
+        
+        // ============================================
+        // 9. STATISTICS CALCULATION
+        // ============================================
+        function updateStatistics() {
+            const stats = {
+                total: filteredAccidents.length,
+                injured: 0,
+                dead: 0,
+                bySeverity: {},
+                byCategory: {},
+                byRegion: {}
+            };
+            
+            filteredAccidents.forEach(feature => {
+                const props = feature.properties;
+                
+                // Sum injured and dead
+                stats.injured += props.injured_count || 0;
+                stats.dead += props.dead_count || 0;
+                
+                // Count by severity
+                const severity = props.severity || 'Unknown';
+                stats.bySeverity[severity] = (stats.bySeverity[severity] || 0) + 1;
+                
+                // Count by category
+                const category = props.category || 'Unknown';
+                stats.byCategory[category] = (stats.byCategory[category] || 0) + 1;
+                
+                // Count by region
+                const region = props.region || 'Unknown';
+                stats.byRegion[region] = (stats.byRegion[region] || 0) + 1;
+            });
+            
+            // Update UI with statistics
+            displayStatistics(stats);
+            return stats;
+        }
+        
+        function displayStatistics(stats) {
+            // Log statistics to console (you can update this to display in UI)
+            console.log('Statistics:', stats);
+        }
+        
+        // ============================================
+        // FILTER PANEL FUNCTIONS
+        // ============================================
+        
+        // Date Filter Functions
+        function formatDateRange(start, end) {
+            const startDate = new Date(start);
+            const endDate = new Date(end);
+            const format = (date) => {
+                const day = String(date.getDate()).padStart(2, '0');
+                const month = String(date.getMonth() + 1).padStart(2, '0');
+                const year = date.getFullYear();
+                return `${day}.${month}.${year}`;
+            };
+            return `${format(startDate)} - ${format(endDate)}`;
+        }
+        
+        function updateDateRangeDisplay() {
+            const input = document.getElementById('dateRangeInput');
+            if (filterState.dateRange.start && filterState.dateRange.end) {
+                input.value = formatDateRange(filterState.dateRange.start, filterState.dateRange.end);
+            }
+        }
+        
+        function setDateRange(range) {
+            const now = new Date();
+            const currentYear = now.getFullYear();
+            
+            switch(range) {
+                case 'last-month':
+                    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+                    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
+                    filterState.dateRange.start = lastMonth.toISOString().split('T')[0];
+                    filterState.dateRange.end = lastMonthEnd.toISOString().split('T')[0];
+                    break;
+                case 'two-months-ago':
+                    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
+                    const twoMonthsAgoEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0);
+                    filterState.dateRange.start = twoMonthsAgo.toISOString().split('T')[0];
+                    filterState.dateRange.end = twoMonthsAgoEnd.toISOString().split('T')[0];
+                    break;
+                case '2025':
+                case '2024':
+                case '2023':
+                case '2022':
+                case '2021':
+                    const year = parseInt(range);
+                    filterState.dateRange.start = `${year}-01-01`;
+                    filterState.dateRange.end = `${year}-12-31`;
+                    break;
+                case 'all-time':
+                    setDefaultDateRange();
+                    return;
+            }
+            
+            updateDateRangeDisplay();
+            applyFilters();
+        }
+        
+        // Participant Filter Functions
+        function initializeParticipantFilter() {
+            const participantItems = document.querySelectorAll('.participant-item');
+            
+            participantItems.forEach(item => {
+                item.addEventListener('click', function() {
+                    const participant = this.getAttribute('data-participant');
+                    
+                    if (participant === 'all') {
+                        participantItems.forEach(i => {
+                            i.setAttribute('data-selected', 'false');
+                            i.classList.remove('active');
+                        });
+                        this.setAttribute('data-selected', 'true');
+                        this.classList.add('active');
+                        filterState.participants = ['all'];
+                    } else {
+                        const isSelected = this.getAttribute('data-selected') === 'true';
+                        
+                        // Always remove "all" when selecting a specific participant
+                        const allBtn = document.querySelector('[data-participant="all"]');
+                        if (allBtn && allBtn.classList.contains('active')) {
+                            allBtn.setAttribute('data-selected', 'false');
+                            allBtn.classList.remove('active');
+                        }
+                        // Remove 'all' from filterState
+                        filterState.participants = filterState.participants.filter(p => p !== 'all');
+                        
+                        if (isSelected) {
+                            // Deselecting this participant
+                            this.setAttribute('data-selected', 'false');
+                            this.classList.remove('active');
+                            filterState.participants = filterState.participants.filter(p => p !== participant);
+                        } else {
+                            // Selecting this participant
+                            this.setAttribute('data-selected', 'true');
+                            this.classList.add('active');
+                            if (!filterState.participants.includes(participant)) {
+                                filterState.participants.push(participant);
+                            }
+                        }
+                        
+                        // If no specific participants selected, select "All"
+                        if (filterState.participants.length === 0) {
+                            if (allBtn) {
+                                allBtn.setAttribute('data-selected', 'true');
+                                allBtn.classList.add('active');
+                            }
+                            filterState.participants = ['all'];
+                        }
+                    }
+                    
+                    applyFilters();
+                });
+            });
+            
+            const allBtn = document.querySelector('[data-participant="all"]');
+            if (allBtn) {
+                allBtn.classList.add('active');
+            }
+        }
+        
+        // Severity Filter Functions
+        function initializeSeverityFilter() {
+            const severityCheckboxes = document.querySelectorAll('[data-severity]');
+            
+            severityCheckboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', function() {
+                    const severity = this.getAttribute('data-severity');
+                    const isChecked = this.checked;
+                    
+                    if (isChecked) {
+                        if (!filterState.severity.includes(severity)) {
+                            filterState.severity.push(severity);
+                        }
+                    } else {
+                        filterState.severity = filterState.severity.filter(s => s !== severity);
+                    }
+                    
+                    applyFilters();
+                });
+            });
+        }
+        
+        // Category Filter Modal Functions
+        let currentFilterType = null;
+        
+        function openCategoryFilter(type) {
+            currentFilterType = type;
+            const panel = document.getElementById('categoryFilterPanel');
+            const title = document.getElementById('categoryFilterTitle');
+            const content = document.getElementById('categoryFilterContent');
+            const searchInput = document.getElementById('categorySearchInput');
+            
+            const titles = {
+                'category': 'Accident Types',
+                'violations': 'Traffic Violations',
+                'nearby': 'Nearby Objects',
+                'road_conditions': 'Road Conditions',
+                'street': 'Streets',
+                'weather': 'Weather'
+            };
+            title.textContent = titles[type] || 'Filter';
+            
+            populateCategoryFilterContent(type, content);
+            
+            panel.style.display = 'flex';
+            
+            searchInput.value = '';
+            searchInput.focus();
+            
+            searchInput.oninput = function() {
+                filterCategoryOptions(this.value, content, type);
+            };
+        }
+        
+        function populateCategoryFilterContent(type, container) {
+            container.innerHTML = '';
+            
+            const typeMap = {
+                'category': { options: filterOptions.categories, stateKey: 'category' },
+                'violations': { options: filterOptions.violations, stateKey: 'violations' },
+                'nearby': { options: filterOptions.nearby, stateKey: 'nearby' },
+                'road_conditions': { options: filterOptions.roadConditions, stateKey: 'roadConditions' },
+                'street': { options: filterOptions.streets, stateKey: 'streets' },
+                'weather': { options: filterOptions.weather, stateKey: 'weather' }
+            };
+            
+            const config = typeMap[type] || { options: [], stateKey: type };
+            const options = config.options;
+            const selectedValues = filterState[config.stateKey] || [];
+            
+            options.forEach(option => {
+                const isSelected = selectedValues.includes(option);
+                const item = document.createElement('div');
+                item.className = 'category-value';
+                const safeId = option.replace(/[^a-zA-Z0-9]/g, '_');
+                item.innerHTML = `
+                    <input type="checkbox" id="${type}-${safeId}" ${isSelected ? 'checked' : ''}>
+                    <label for="${type}-${safeId}">${option}</label>
+                `;
+                
+                const checkbox = item.querySelector('input');
+                checkbox.addEventListener('change', function() {
+                    updateCategoryFilter(type, option, this.checked);
+                });
+                
+                container.appendChild(item);
+            });
+        }
+        
+        function filterCategoryOptions(searchTerm, container, type) {
+            const items = container.querySelectorAll('.category-value');
+            const term = searchTerm.toLowerCase();
+            
+            items.forEach(item => {
+                const label = item.querySelector('label').textContent.toLowerCase();
+                item.style.display = label.includes(term) ? 'flex' : 'none';
+            });
+        }
+        
+        function updateCategoryFilter(type, value, isSelected) {
+            const typeMap = {
+                'category': 'category',
+                'violations': 'violations',
+                'nearby': 'nearby',
+                'road_conditions': 'roadConditions',
+                'street': 'streets',
+                'weather': 'weather'
+            };
+            
+            const stateKey = typeMap[type] || type;
+            
+            if (!filterState[stateKey]) {
+                filterState[stateKey] = [];
+            }
+            
+            if (isSelected) {
+                if (!filterState[stateKey].includes(value)) {
+                    filterState[stateKey].push(value);
+                }
+            } else {
+                filterState[stateKey] = filterState[stateKey].filter(v => v !== value);
+            }
+            
+            updateFilterCounts();
+            applyFilters();
+        }
+        
+        function updateFilterCounts() {
+            document.getElementById('categoryCount').textContent = filterState.category.length;
+            document.getElementById('violationsCount').textContent = filterState.violations.length;
+            document.getElementById('nearbyCount').textContent = filterState.nearby.length;
+            document.getElementById('roadConditionsCount').textContent = filterState.roadConditions.length;
+            document.getElementById('streetCount').textContent = filterState.streets.length;
+            document.getElementById('weatherCount').textContent = filterState.weather.length;
+            
+            const filterTypeMap = {
+                'category': 'category',
+                'violations': 'violations',
+                'nearby': 'nearby',
+                'road_conditions': 'roadConditions',
+                'street': 'streets',
+                'weather': 'weather'
+            };
+            
+            Object.keys(filterTypeMap).forEach(buttonType => {
+                const stateKey = filterTypeMap[buttonType];
+                const btn = document.getElementById(`${buttonType}FilterBtn`);
+                if (btn) {
+                    if (filterState[stateKey] && filterState[stateKey].length > 0) {
+                        btn.classList.add('active');
+                    } else {
+                        btn.classList.remove('active');
+                    }
+                }
+            });
+        }
+        
+        // ============================================
+        // 10. URL SYNCHRONIZATION
+        // ============================================
+        // Update URL Parameters
+        function updateURL() {
+            const url = new URL(window.location);
+            
+            // Map center and zoom
+            const center = map.getCenter();
+            url.searchParams.set('center', `${center.lat}:${center.lng}`);
+            url.searchParams.set('zoom', map.getZoom());
+            
+            // Date range
+            if (filterState.dateRange.start && filterState.dateRange.end) {
+                url.searchParams.set('start_date', filterState.dateRange.start);
+                url.searchParams.set('end_date', filterState.dateRange.end);
+            }
+            
+            // Participants
+            if (filterState.participants.length > 0 && !filterState.participants.includes('all')) {
+                url.searchParams.set('participants', filterState.participants.join(';'));
+            }
+            
+            // Severity
+            if (filterState.severity.length < 3) {
+                url.searchParams.set('severity', filterState.severity.join(';'));
+            }
+            
+            // Category filters
+            ['category', 'violations', 'nearby', 'roadConditions', 'streets', 'weather'].forEach(type => {
+                if (filterState[type] && filterState[type].length > 0) {
+                    url.searchParams.set(type, filterState[type].join(';'));
+                }
+            });
+            
+            window.history.pushState(null, '', url);
+        }
+        
+        // Load State from URL
+        function loadStateFromURL() {
+            const url = new URL(window.location);
+            
+            // Map center and zoom
+            const centerStr = url.searchParams.get('center');
+            if (centerStr) {
+                const [lat, lng] = centerStr.split(':').map(Number);
+                const zoom = Number(url.searchParams.get('zoom')) || 12;
+                map.setView([lat, lng], zoom);
+            }
+            
+            // Load filters from URL
+            const startDate = url.searchParams.get('start_date');
+            const endDate = url.searchParams.get('end_date');
+            if (startDate && endDate) {
+                filterState.dateRange.start = startDate;
+                filterState.dateRange.end = endDate;
+                updateDateRangeDisplay();
+            }
+            
+            const participants = url.searchParams.get('participants');
+            if (participants) {
+                filterState.participants = participants.split(';');
+                document.querySelectorAll('.participant-item').forEach(item => {
+                    const participant = item.getAttribute('data-participant');
+                    if (filterState.participants.includes(participant)) {
+                        item.setAttribute('data-selected', 'true');
+                        item.classList.add('active');
+                    }
+                });
+            }
+            
+            const severity = url.searchParams.get('severity');
+            if (severity) {
+                filterState.severity = severity.split(';');
+                document.querySelectorAll('[data-severity]').forEach(checkbox => {
+                    checkbox.checked = filterState.severity.includes(checkbox.getAttribute('data-severity'));
+                });
+            }
+            
+            ['category', 'violations', 'nearby', 'roadConditions', 'streets', 'weather'].forEach(type => {
+                const value = url.searchParams.get(type);
+                if (value) {
+                    filterState[type] = value.split(';');
+                }
+            });
+            
+            updateFilterCounts();
+            applyFilters();
+        }
+        
+        // ============================================
+        // 11. INITIALIZATION AND MAIN FUNCTION
+        // ============================================
+        // Main Update Visualization Function
+        function updateVisualization() {
+            const zoom = map.getZoom();
+            
+            if (zoom >= MIN_ZOOM_FOR_POINTS) {
+                recreatePoints(filteredAccidents);
+            } else if (zoom >= MIN_ZOOM_FOR_HEATMAP) {
+                drawHeatmap(filteredAccidents);
+            } else {
+                clearObjects();
+            }
+        }
+        
+        // Complete Initialization
+        // Initialize filters after data is loaded
+        async function initializeFilters() {
+            // Wait for data to load
+            await loadGeoJSON();
+            
+            // Initialize filter options
+            initializeFilterOptions();
+            
+            // Set default date range
+            setDefaultDateRange();
+            
+            // Initialize filter UI
+            initializeParticipantFilter();
+            initializeSeverityFilter();
+            
+            // Date filter event listeners
+            const dateDropdownBtn = document.getElementById('dateDropdownBtn');
+            const dateMenu = document.getElementById('dateMenu');
+            
+            if (dateDropdownBtn && dateMenu) {
+                dateDropdownBtn.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    dateMenu.style.display = dateMenu.style.display === 'none' ? 'block' : 'none';
+                });
+                
+                document.addEventListener('click', function(e) {
+                    if (!dateDropdownBtn.contains(e.target) && !dateMenu.contains(e.target)) {
+                        dateMenu.style.display = 'none';
+                    }
+                });
+                
+                const dateValues = dateMenu.querySelectorAll('.date-value');
+                dateValues.forEach(item => {
+                    item.addEventListener('click', function() {
+                        const range = this.getAttribute('data-range');
+                        setDateRange(range);
+                        dateMenu.style.display = 'none';
+                    });
+                });
+            }
+            
+            // Category filter button event listeners
+            const categoryButtons = document.querySelectorAll('.category-tag');
+            categoryButtons.forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const type = this.getAttribute('data-filter-type');
+                    openCategoryFilter(type);
+                });
+            });
+            
+            // Back button
+            const backBtn = document.getElementById('backBtn');
+            if (backBtn) {
+                backBtn.addEventListener('click', function() {
+                    document.getElementById('categoryFilterPanel').style.display = 'none';
+                });
+            }
+            
+            // Hide/Show Filter Panel
+            const hideBtn = document.getElementById('hideFilterBtn');
+            const filterPanel = document.getElementById('filterPanel');
+            if (hideBtn && filterPanel) {
+                hideBtn.addEventListener('click', function() {
+                    const isHidden = filterPanel.classList.contains('hidden');
+                    
+                    if (isHidden) {
+                        filterPanel.classList.remove('hidden');
+                        this.querySelector('span:first-child').textContent = '▼';
+                        this.querySelector('span:last-child').textContent = 'Hide';
+                    } else {
+                        filterPanel.classList.add('hidden');
+                        this.querySelector('span:first-child').textContent = '▲';
+                        this.querySelector('span:last-child').textContent = 'Show';
+                    }
+                });
+            }
+            
+            // Apply initial filters
+            applyFilters();
+        }
+        
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', async function() {
+            // Initialize filters first
+            await initializeFilters();
+            
+            // Then initialize map and visualization
+            loadStateFromURL();
+            updateVisualization();
+            updateStatistics();
+            
+            // Set up event listeners
+            map.on('moveend', updateURL);
+            map.on('zoomend', function() {
+                updateVisualization();
+                updateURL();
+            });
+        });
+    </script>
+</body>
+</html>
+

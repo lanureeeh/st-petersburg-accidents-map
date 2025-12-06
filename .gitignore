@@ -1,0 +1,42 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+
+# Virtual environments
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# Project specific
+*.qgz
+*.txt
+extract_*.py
+accidents_data.json
+populations_districts.csv
+final_saint_p_english.geojson
+
+# Keep only what's needed for the map
+# english_clipped.geojson - KEEP THIS (needed for the map)
+# map2.html/index.html - KEEP THIS (the map itself)
+
