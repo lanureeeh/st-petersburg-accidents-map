@@ -132,6 +132,31 @@
             color: #18334a;
         }
         
+        .severity-breakdown {
+            font-size: 13px;
+            color: #666;
+            margin-bottom: 12px;
+            padding: 8px 0;
+            border-bottom: 1px solid #e0e0e0;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .severity-breakdown-item {
+            display: inline-flex;
+            align-items: center;
+            gap: 4px;
+        }
+        
+        .severity-breakdown-item .severity-color {
+            display: inline-block;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+        }
+        
         .cluster-popup p {
             font-size: 14px;
             color: #666;
@@ -347,6 +372,58 @@
         
         .hotspot-accidents-list li:last-child {
             border-bottom: none;
+        }
+        
+        /* Hotspot Legend Styles */
+        .hotspot-legend {
+            background: white;
+            padding: 10px;
+            border-radius: 4px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+            font-family: 'Roboto', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        }
+        
+        .hotspot-legend-title {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #18334a;
+        }
+        
+        .hotspot-legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin: 6px 0;
+            font-size: 13px;
+            color: #666;
+        }
+        
+        .hotspot-legend-item span {
+            flex: 1;
+        }
+        
+        .hotspot-legend-marker {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            background-color: #FF001A;
+            border: 2px solid #FFFFFF;
+            box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.1);
+            flex-shrink: 0;
+        }
+        
+        .cluster-legend-marker {
+            width: 30px;
+            height: 30px;
+            flex-shrink: 0;
+            position: relative;
+        }
+        
+        .cluster-legend-marker img {
+            width: 100%;
+            height: 100%;
+            display: block;
         }
         
         /* Filter Panel Styles */
@@ -930,6 +1007,95 @@
         let heatmapLayer = null; // Will be initialized when needed
         const hotspotLayer = L.layerGroup(); // For top 10 hotspot markers
         
+        // Create Hotspot Legend Control
+        // Create a sample pie chart icon for legend (showing all 3 severities)
+        function createLegendPieChartIcon() {
+            const size = 30;
+            const canvas = document.createElement('canvas');
+            canvas.width = size;
+            canvas.height = size;
+            const ctx = canvas.getContext('2d');
+            
+            const centerX = size / 2;
+            const centerY = size / 2;
+            const outerRadius = size / 2 - 2; // Leave space for white border
+            const innerRadius = size / 4; // Radius for white center circle
+            const borderWidth = 2;
+            
+            // Draw pie chart with equal parts for each severity (for legend example)
+            const total = 3;
+            let currentAngle = -Math.PI / 2; // Start from top
+            
+            // Easy (Yellow) - draw as ring segment
+            const sliceAngle = (1 / total) * 2 * Math.PI;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, outerRadius, currentAngle, currentAngle + sliceAngle);
+            ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+            ctx.closePath();
+            ctx.fillStyle = '#FFB81F';
+            ctx.fill();
+            currentAngle += sliceAngle;
+            
+            // Heavy (Orange) - draw as ring segment
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, outerRadius, currentAngle, currentAngle + sliceAngle);
+            ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+            ctx.closePath();
+            ctx.fillStyle = '#FF7F24';
+            ctx.fill();
+            currentAngle += sliceAngle;
+            
+            // With the dead (Red) - draw as ring segment
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, outerRadius, currentAngle, currentAngle + sliceAngle);
+            ctx.arc(centerX, centerY, innerRadius, currentAngle + sliceAngle, currentAngle, true);
+            ctx.closePath();
+            ctx.fillStyle = '#FF001A';
+            ctx.fill();
+            
+            // White center circle
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, innerRadius, 0, 2 * Math.PI);
+            ctx.fillStyle = 'white';
+            ctx.fill();
+            
+            // White border around the pie chart
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, outerRadius, 0, 2 * Math.PI);
+            ctx.strokeStyle = 'white';
+            ctx.lineWidth = borderWidth;
+            ctx.stroke();
+            
+            // Count text on white center circle
+            ctx.fillStyle = '#18334a';
+            ctx.font = `bold ${Math.max(10, Math.min(16, size / 4.5))}px Arial`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText('3', centerX, centerY);
+            
+            return canvas.toDataURL();
+        }
+        
+        const mapLegend = L.control({ position: 'bottomright' });
+        mapLegend.onAdd = function(map) {
+            const div = L.DomUtil.create('div', 'hotspot-legend');
+            div.innerHTML = `
+                <div class="hotspot-legend-title" id="legendTitle">Hotspots</div>
+                <div class="hotspot-legend-item" id="hotspotLegendItem">
+                    <div class="hotspot-legend-marker"></div>
+                    <span>Top 10 accident hotspots</span>
+                </div>
+                <div class="hotspot-legend-item" id="clusterLegendItem" style="display: none;">
+                    <div class="cluster-legend-marker">
+                        <img src="${createLegendPieChartIcon()}" alt="Cluster">
+                    </div>
+                    <span>Accident clusters (shows severity breakdown)</span>
+                </div>
+            `;
+            return div;
+        };
+        mapLegend.addTo(map);
+        
         // Create pie chart icon for cluster with severity breakdown (only 3 severities)
         function createPieChartIcon(count, severityCounts, size) {
             const canvas = document.createElement('canvas');
@@ -1138,6 +1304,31 @@
             
             // Get current zoom
             const zoom = map.getZoom();
+            
+            // Show/hide legend items based on zoom level
+            const legendElement = document.querySelector('.hotspot-legend');
+            const hotspotLegendItem = document.getElementById('hotspotLegendItem');
+            const clusterLegendItem = document.getElementById('clusterLegendItem');
+            const legendTitle = document.getElementById('legendTitle');
+            
+            if (legendElement) {
+                if (zoom >= MIN_ZOOM_FOR_POINTS) {
+                    // Points/Clusters mode - show cluster legend
+                    legendElement.style.display = 'block';
+                    if (legendTitle) legendTitle.textContent = 'Legend';
+                    if (hotspotLegendItem) hotspotLegendItem.style.display = 'none';
+                    if (clusterLegendItem) clusterLegendItem.style.display = 'flex';
+                } else if (zoom >= MIN_ZOOM_FOR_HEATMAP) {
+                    // Heatmap mode - show hotspot legend
+                    legendElement.style.display = 'block';
+                    if (legendTitle) legendTitle.textContent = 'Hotspots';
+                    if (hotspotLegendItem) hotspotLegendItem.style.display = 'flex';
+                    if (clusterLegendItem) clusterLegendItem.style.display = 'none';
+                } else {
+                    // Too zoomed out - hide legend
+                    legendElement.style.display = 'none';
+                }
+            }
             
             // Filter accidents that have valid points
             const visibleAccidents = filteredAccidents.filter(acc => {
@@ -1385,6 +1576,19 @@
             
             // Find top 10 hotspots
             const hotspots = findTop10Hotspots(accidents);
+            
+            // Show/hide legend based on whether hotspots exist (only in heatmap mode)
+            const zoom = map.getZoom();
+            const legendElement = document.querySelector('.hotspot-legend');
+            const hotspotLegendItem = document.getElementById('hotspotLegendItem');
+            
+            if (legendElement && zoom >= MIN_ZOOM_FOR_HEATMAP && zoom < MIN_ZOOM_FOR_POINTS) {
+                // Only show/hide in heatmap mode
+                legendElement.style.display = hotspots.length > 0 ? 'block' : 'none';
+                if (hotspotLegendItem) {
+                    hotspotLegendItem.style.display = hotspots.length > 0 ? 'flex' : 'none';
+                }
+            }
             
             // Create markers for each hotspot
             hotspots.forEach((hotspot, index) => {
@@ -1855,6 +2059,32 @@
             const count = markers.length;
             const { grouped, sortedDates } = groupAccidentsByDate(markers);
             
+            // Count severities in cluster
+            const severityCounts = {
+                easy: 0,
+                heavy: 0,
+                withDead: 0
+            };
+            
+            markers.forEach(marker => {
+                if (marker.featureData && marker.featureData.severity) {
+                    const severity = marker.featureData.severity;
+                    if (severity === 'Easy') {
+                        severityCounts.easy++;
+                    } else if (severity === 'Heavy') {
+                        severityCounts.heavy++;
+                    } else if (severity === 'With the dead') {
+                        severityCounts.withDead++;
+                    } else {
+                        // Map unknown severities to Easy as default
+                        severityCounts.easy++;
+                    }
+                } else {
+                    // Map missing severity to Easy as default
+                    severityCounts.easy++;
+                }
+            });
+            
             // Generate unique ID for this popup
             const popupId = 'cluster-popup-' + Date.now();
             
@@ -1905,9 +2135,24 @@
                 `;
             });
             
+            // Build severity breakdown HTML
+            const severityBreakdown = [];
+            if (severityCounts.easy > 0) {
+                severityBreakdown.push(`<span class="severity-breakdown-item"><span class="severity-color" style="background: #FFB81F;"></span> Easy: ${severityCounts.easy}</span>`);
+            }
+            if (severityCounts.heavy > 0) {
+                severityBreakdown.push(`<span class="severity-breakdown-item"><span class="severity-color" style="background: #FF7F24;"></span> Heavy: ${severityCounts.heavy}</span>`);
+            }
+            if (severityCounts.withDead > 0) {
+                severityBreakdown.push(`<span class="severity-breakdown-item"><span class="severity-color" style="background: #FF001A;"></span> With the dead: ${severityCounts.withDead}</span>`);
+            }
+            
             return `
                 <div class="cluster-popup" id="${popupId}">
                     <h4>${count} Accidents</h4>
+                    <div class="severity-breakdown">
+                        ${severityBreakdown.join(' • ')}
+                    </div>
                     <div class="dates-list">
                         ${dateListHTML}
                     </div>
