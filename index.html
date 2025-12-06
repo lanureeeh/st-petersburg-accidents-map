@@ -748,20 +748,23 @@
                         type="text" 
                         id="dateRangeInput" 
                         class="date-input" 
-                        placeholder="01.06.2021 - 30.06.2025" 
-                        readonly 
+                        placeholder="01.01.2015 - 31.12.2025" 
                     />
                     <button class="date-dropdown-btn" id="dateDropdownBtn">
                         <span>▼</span>
                     </button>
                     <div class="date-menu" id="dateMenu" style="display: none;">
-                        <div class="date-value" data-range="last-month">Last Month</div>
-                        <div class="date-value" data-range="two-months-ago">Two Months Ago</div>
                         <div class="date-value" data-range="2025">2025</div>
                         <div class="date-value" data-range="2024">2024</div>
                         <div class="date-value" data-range="2023">2023</div>
                         <div class="date-value" data-range="2022">2022</div>
                         <div class="date-value" data-range="2021">2021</div>
+                        <div class="date-value" data-range="2020">2020</div>
+                        <div class="date-value" data-range="2019">2019</div>
+                        <div class="date-value" data-range="2018">2018</div>
+                        <div class="date-value" data-range="2017">2017</div>
+                        <div class="date-value" data-range="2016">2016</div>
+                        <div class="date-value" data-range="2015">2015</div>
                         <div class="date-value" data-range="all-time">All Time</div>
                     </div>
                 </div>
@@ -2033,28 +2036,66 @@
             }
         }
         
-        function setDateRange(range) {
-            const now = new Date();
-            const currentYear = now.getFullYear();
+        function parseDateInput(inputValue) {
+            // Parse format: "DD.MM.YYYY - DD.MM.YYYY"
+            const parts = inputValue.split(' - ');
+            if (parts.length !== 2) {
+                return null;
+            }
             
+            const parseDate = (dateStr) => {
+                const trimmed = dateStr.trim();
+                const dateParts = trimmed.split('.');
+                if (dateParts.length !== 3) {
+                    return null;
+                }
+                const day = parseInt(dateParts[0], 10);
+                const month = parseInt(dateParts[1], 10);
+                const year = parseInt(dateParts[2], 10);
+                
+                if (isNaN(day) || isNaN(month) || isNaN(year)) {
+                    return null;
+                }
+                
+                // Create date object (month is 0-indexed in JavaScript)
+                const date = new Date(year, month - 1, day);
+                
+                // Validate date
+                if (date.getFullYear() !== year || 
+                    date.getMonth() !== month - 1 || 
+                    date.getDate() !== day) {
+                    return null;
+                }
+                
+                return date;
+            };
+            
+            const startDate = parseDate(parts[0]);
+            const endDate = parseDate(parts[1]);
+            
+            if (!startDate || !endDate) {
+                return null;
+            }
+            
+            return {
+                start: startDate.toISOString().split('T')[0],
+                end: endDate.toISOString().split('T')[0]
+            };
+        }
+        
+        function setDateRange(range) {
             switch(range) {
-                case 'last-month':
-                    const lastMonth = new Date(now.getFullYear(), now.getMonth() - 1, 1);
-                    const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
-                    filterState.dateRange.start = lastMonth.toISOString().split('T')[0];
-                    filterState.dateRange.end = lastMonthEnd.toISOString().split('T')[0];
-                    break;
-                case 'two-months-ago':
-                    const twoMonthsAgo = new Date(now.getFullYear(), now.getMonth() - 2, 1);
-                    const twoMonthsAgoEnd = new Date(now.getFullYear(), now.getMonth() - 1, 0);
-                    filterState.dateRange.start = twoMonthsAgo.toISOString().split('T')[0];
-                    filterState.dateRange.end = twoMonthsAgoEnd.toISOString().split('T')[0];
-                    break;
                 case '2025':
                 case '2024':
                 case '2023':
                 case '2022':
                 case '2021':
+                case '2020':
+                case '2019':
+                case '2018':
+                case '2017':
+                case '2016':
+                case '2015':
                     const year = parseInt(range);
                     filterState.dateRange.start = `${year}-01-01`;
                     filterState.dateRange.end = `${year}-12-31`;
@@ -2402,8 +2443,8 @@
             // Initialize filter options
             initializeFilterOptions();
             
-            // Set default date range
-            setDefaultDateRange();
+            // Set default date range to 2024 (will be overridden by URL params if present)
+            setDateRange('2024');
             
             // Initialize filter UI
             initializeParticipantFilter();
@@ -2412,6 +2453,48 @@
             // Date filter event listeners
             const dateDropdownBtn = document.getElementById('dateDropdownBtn');
             const dateMenu = document.getElementById('dateMenu');
+            const dateRangeInput = document.getElementById('dateRangeInput');
+            const dateError = document.getElementById('dateError');
+            
+            // Handle typed date input
+            if (dateRangeInput) {
+                dateRangeInput.addEventListener('blur', function() {
+                    const inputValue = this.value.trim();
+                    if (inputValue === '') {
+                        // Empty input - set to all time
+                        setDefaultDateRange();
+                        applyFilters();
+                        if (dateError) {
+                            dateError.style.display = 'none';
+                        }
+                        return;
+                    }
+                    
+                    const parsed = parseDateInput(inputValue);
+                    if (parsed) {
+                        filterState.dateRange.start = parsed.start;
+                        filterState.dateRange.end = parsed.end;
+                        updateDateRangeDisplay();
+                        applyFilters();
+                        if (dateError) {
+                            dateError.style.display = 'none';
+                        }
+                    } else {
+                        // Invalid format - show error
+                        if (dateError) {
+                            dateError.textContent = 'Invalid date format. Use: DD.MM.YYYY - DD.MM.YYYY';
+                            dateError.style.display = 'block';
+                        }
+                    }
+                });
+                
+                // Also handle Enter key
+                dateRangeInput.addEventListener('keypress', function(e) {
+                    if (e.key === 'Enter') {
+                        this.blur();
+                    }
+                });
+            }
             
             if (dateDropdownBtn && dateMenu) {
                 dateDropdownBtn.addEventListener('click', function(e) {
